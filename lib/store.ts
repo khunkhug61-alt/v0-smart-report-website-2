@@ -28,8 +28,9 @@ export interface Admin {
   password: string
 }
 
-export interface LineNotifySettings {
-  token: string
+export interface TelegramSettings {
+  botToken: string
+  chatId: string
   enabled: boolean
 }
 
@@ -38,7 +39,7 @@ interface ReportStore {
   categories: Category[]
   admin: Admin
   isAdminLoggedIn: boolean
-  lineNotify: LineNotifySettings
+  telegram: TelegramSettings
   
   // Report actions
   addReport: (report: Omit<Report, 'id' | 'status' | 'createdAt' | 'updatedAt' | 'editToken'>) => string
@@ -52,9 +53,9 @@ interface ReportStore {
   loginAdmin: (username: string, password: string) => boolean
   logoutAdmin: () => void
   
-  // LINE Notify actions
-  updateLineNotifySettings: (settings: Partial<LineNotifySettings>) => void
-  sendLineNotify: (message: string) => Promise<boolean>
+  // Telegram actions
+  updateTelegramSettings: (settings: Partial<TelegramSettings>) => void
+  sendTelegramNotify: (message: string) => Promise<boolean>
 }
 
 const defaultCategories: Category[] = [
@@ -77,7 +78,7 @@ export const useReportStore = create<ReportStore>()(
       categories: defaultCategories,
       admin: { username: 'admin', password: 'admin123' },
       isAdminLoggedIn: false,
-      lineNotify: { token: '', enabled: false },
+      telegram: { botToken: '', chatId: '', enabled: false },
 
       addReport: (reportData) => {
         const editToken = generateEditToken()
@@ -142,28 +143,32 @@ export const useReportStore = create<ReportStore>()(
         set({ isAdminLoggedIn: false })
       },
 
-      updateLineNotifySettings: (settings) => {
+      updateTelegramSettings: (settings) => {
         set((state) => ({
-          lineNotify: { ...state.lineNotify, ...settings },
+          telegram: { ...state.telegram, ...settings },
         }))
       },
 
-      sendLineNotify: async (message) => {
-        const { lineNotify } = get()
-        if (!lineNotify.enabled || !lineNotify.token) {
+      sendTelegramNotify: async (message) => {
+        const { telegram } = get()
+        if (!telegram.enabled || !telegram.botToken || !telegram.chatId) {
           return false
         }
 
         try {
-          const response = await fetch('/api/line-notify', {
+          const response = await fetch('/api/telegram', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ message, token: lineNotify.token }),
+            body: JSON.stringify({
+              message,
+              botToken: telegram.botToken,
+              chatId: telegram.chatId,
+            }),
           })
           const data = await response.json()
           return data.success
         } catch (error) {
-          console.error('Failed to send LINE notification:', error)
+          console.error('Failed to send Telegram notification:', error)
           return false
         }
       },

@@ -33,7 +33,7 @@ const iconMap: Record<string, React.ElementType> = {
 function ReportForm() {
   const searchParams = useSearchParams()
   const router = useRouter()
-  const { categories, addReport, sendLineNotify } = useReportStore()
+  const { categories, addReport, sendTelegramNotify } = useReportStore()
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const [formData, setFormData] = useState({
@@ -105,15 +105,14 @@ function ReportForm() {
       imageUrl: imagePreview || undefined,
     })
 
-    // Send LINE notification
-    const lineMessage = `
-🔔 แจ้งปัญหาใหม่!
+    // Send Telegram notification
+    const telegramMessage = `🔔 <b>แจ้งปัญหาใหม่!</b>
+
 📂 หมวดหมู่: ${formData.category}
 📍 สถานที่: ${formData.location.trim()}
 📝 รายละเอียด: ${formData.description.trim()}
-🕐 เวลา: ${new Date().toLocaleString('th-TH')}
-`
-    sendLineNotify(lineMessage)
+🕐 เวลา: ${new Date().toLocaleString('th-TH')}`
+    sendTelegramNotify(telegramMessage)
 
     setSubmitResult({ success: true, editToken })
     setIsSubmitting(false)

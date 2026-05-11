@@ -39,9 +39,9 @@ export default function AdminPage() {
     updateReportStatus,
     updateReport,
     deleteReport,
-    lineNotify,
-    updateLineNotifySettings,
-    sendLineNotify,
+    telegram,
+    updateTelegramSettings,
+    sendTelegramNotify,
   } = useReportStore()
 
   const [loginForm, setLoginForm] = useState({ username: '', password: '' })
@@ -53,9 +53,10 @@ export default function AdminPage() {
   const [editForm, setEditForm] = useState({ description: '', location: '', status: 'pending' as ReportStatus })
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null)
   const [expandedImage, setExpandedImage] = useState<string | null>(null)
-  const [showLineSettings, setShowLineSettings] = useState(false)
-  const [lineToken, setLineToken] = useState(lineNotify.token)
-  const [lineTestStatus, setLineTestStatus] = useState<'idle' | 'sending' | 'success' | 'error'>('idle')
+  const [showTelegramSettings, setShowTelegramSettings] = useState(false)
+  const [botToken, setBotToken] = useState(telegram.botToken)
+  const [chatId, setChatId] = useState(telegram.chatId)
+  const [telegramTestStatus, setTelegramTestStatus] = useState<'idle' | 'sending' | 'success' | 'error'>('idle')
 
   const stats = {
     total: reports.length,
@@ -87,20 +88,19 @@ export default function AdminPage() {
     const report = reports.find(r => r.id === reportId)
     updateReportStatus(reportId, newStatus)
     
-    if (report && lineNotify.enabled) {
+    if (report && telegram.enabled) {
       const statusText = {
         'pending': 'รอดำเนินการ',
         'in-progress': 'กำลังแก้ไข',
-        'done': 'เสร็จแล้ว ✅'
+        'done': 'เสร็จแล้ว'
       }
-      const message = `
-📋 อัปเดตสถานะ
+      const message = `📋 <b>อัปเดตสถานะ</b>
+
 📂 หมวดหมู่: ${report.category}
 📍 สถานที่: ${report.location}
 🔄 สถานะใหม่: ${statusText[newStatus]}
-🕐 เวลา: ${new Date().toLocaleString('th-TH')}
-`
-      sendLineNotify(message)
+🕐 เวลา: ${new Date().toLocaleString('th-TH')}`
+      sendTelegramNotify(message)
     }
   }
 
@@ -144,15 +144,19 @@ export default function AdminPage() {
     })
   }
 
-  const saveLineSettings = () => {
-    updateLineNotifySettings({ token: lineToken, enabled: lineToken.length > 0 })
+  const saveTelegramSettings = () => {
+    updateTelegramSettings({
+      botToken,
+      chatId,
+      enabled: botToken.length > 0 && chatId.length > 0,
+    })
   }
 
-  const testLineNotify = async () => {
-    setLineTestStatus('sending')
-    const success = await sendLineNotify('🔔 ทดสอบการแจ้งเตือนจาก Smart Report สำเร็จ!')
-    setLineTestStatus(success ? 'success' : 'error')
-    setTimeout(() => setLineTestStatus('idle'), 3000)
+  const testTelegramNotify = async () => {
+    setTelegramTestStatus('sending')
+    const success = await sendTelegramNotify('🔔 <b>ทดสอบการแจ้งเตือน</b>\n\nระบบ Smart Report เชื่อมต่อ Telegram สำเร็จ!')
+    setTelegramTestStatus(success ? 'success' : 'error')
+    setTimeout(() => setTelegramTestStatus('idle'), 3000)
   }
 
   // Login Screen
@@ -254,15 +258,15 @@ export default function AdminPage() {
         </div>
         <div className="flex gap-2">
           <button
-            onClick={() => setShowLineSettings(!showLineSettings)}
+            onClick={() => setShowTelegramSettings(!showTelegramSettings)}
             className={`inline-flex items-center justify-center gap-2 rounded-lg border px-4 py-2 font-medium transition-colors ${
-              lineNotify.enabled
-                ? 'border-green-500 bg-green-50 text-green-700 hover:bg-green-100'
+              telegram.enabled
+                ? 'border-blue-500 bg-blue-50 text-blue-700 hover:bg-blue-100'
                 : 'border-border text-foreground hover:bg-accent'
             }`}
           >
             <Bell className="h-5 w-5" />
-            LINE Notify
+            Telegram
           </button>
           <button
             onClick={logoutAdmin}
@@ -274,65 +278,78 @@ export default function AdminPage() {
         </div>
       </div>
 
-      {/* LINE Notify Settings Panel */}
-      {showLineSettings && (
+      {/* Telegram Settings Panel */}
+      {showTelegramSettings && (
         <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
           <div className="mb-4 flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Bell className="h-5 w-5 text-green-500" />
-              <h2 className="text-lg font-semibold text-foreground">ตั้งค่า LINE Notify</h2>
+              <Bell className="h-5 w-5 text-blue-500" />
+              <h2 className="text-lg font-semibold text-foreground">ตั้งค่า Telegram Bot</h2>
             </div>
             <a
-              href="https://notify-bot.line.me/th/"
+              href="https://t.me/BotFather"
               target="_blank"
               rel="noopener noreferrer"
               className="flex items-center gap-1 text-sm text-primary hover:underline"
             >
-              รับ Token <ExternalLink className="h-3 w-3" />
+              สร้าง Bot <ExternalLink className="h-3 w-3" />
             </a>
           </div>
           
           <div className="space-y-4">
             <div>
               <label className="mb-2 block text-sm font-medium text-foreground">
-                LINE Notify Token
+                Bot Token
               </label>
               <input
                 type="text"
-                value={lineToken}
-                onChange={(e) => setLineToken(e.target.value)}
-                placeholder="วาง Token ที่ได้จาก LINE Notify"
+                value={botToken}
+                onChange={(e) => setBotToken(e.target.value)}
+                placeholder="เช่น 123456789:ABCdefGHIjklMNOpqrSTUvwxYZ"
+                className="w-full rounded-lg border border-input bg-background px-4 py-3 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+              />
+            </div>
+
+            <div>
+              <label className="mb-2 block text-sm font-medium text-foreground">
+                Chat ID
+              </label>
+              <input
+                type="text"
+                value={chatId}
+                onChange={(e) => setChatId(e.target.value)}
+                placeholder="เช่น -1001234567890 หรือ @channelname"
                 className="w-full rounded-lg border border-input bg-background px-4 py-3 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
               />
             </div>
 
             <div className="flex flex-wrap gap-3">
               <button
-                onClick={saveLineSettings}
+                onClick={saveTelegramSettings}
                 className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 font-medium text-primary-foreground transition-colors hover:bg-primary/90"
               >
                 <Settings className="h-4 w-4" />
                 บันทึกการตั้งค่า
               </button>
               
-              {lineNotify.enabled && (
+              {telegram.enabled && (
                 <button
-                  onClick={testLineNotify}
-                  disabled={lineTestStatus === 'sending'}
+                  onClick={testTelegramNotify}
+                  disabled={telegramTestStatus === 'sending'}
                   className={`inline-flex items-center gap-2 rounded-lg border px-4 py-2 font-medium transition-colors ${
-                    lineTestStatus === 'success'
+                    telegramTestStatus === 'success'
                       ? 'border-green-500 bg-green-50 text-green-700'
-                      : lineTestStatus === 'error'
+                      : telegramTestStatus === 'error'
                       ? 'border-red-500 bg-red-50 text-red-700'
                       : 'border-border text-foreground hover:bg-accent'
                   }`}
                 >
                   <Send className="h-4 w-4" />
-                  {lineTestStatus === 'sending'
+                  {telegramTestStatus === 'sending'
                     ? 'กำลังส่ง...'
-                    : lineTestStatus === 'success'
+                    : telegramTestStatus === 'success'
                     ? 'ส่งสำเร็จ!'
-                    : lineTestStatus === 'error'
+                    : telegramTestStatus === 'error'
                     ? 'ส่งไม่สำเร็จ'
                     : 'ทดสอบส่งข้อความ'}
                 </button>
@@ -340,20 +357,21 @@ export default function AdminPage() {
             </div>
 
             <div className="rounded-lg bg-muted p-4 text-sm">
-              <p className="mb-2 font-medium text-foreground">วิธีรับ LINE Notify Token:</p>
+              <p className="mb-2 font-medium text-foreground">วิธีตั้งค่า Telegram Bot:</p>
               <ol className="list-inside list-decimal space-y-1 text-muted-foreground">
-                <li>ไปที่ <a href="https://notify-bot.line.me/th/" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">notify-bot.line.me</a></li>
-                <li>เข้าสู่ระบบด้วยบัญชี LINE</li>
-                <li>ไปที่ {"\"หน้าของฉัน\""} {">"} {"\"สร้าง Token\""}</li>
-                <li>เลือกกลุ่มหรือ {"\"1-on-1 chat\""} สำหรับรับแจ้งเตือน</li>
-                <li>คัดลอก Token มาวางในช่องด้านบน</li>
+                <li>เปิด Telegram แล้วค้นหา <a href="https://t.me/BotFather" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">@BotFather</a></li>
+                <li>พิมพ์ /newbot แล้วตั้งชื่อ Bot</li>
+                <li>คัดลอก Bot Token มาวางในช่องด้านบน</li>
+                <li>สร้างกลุ่มหรือ Channel แล้วเพิ่ม Bot เข้าไป</li>
+                <li>ค้นหา <a href="https://t.me/userinfobot" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">@userinfobot</a> หรือ <a href="https://t.me/getmyid_bot" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">@getmyid_bot</a> เพื่อหา Chat ID</li>
+                <li>วาง Chat ID ในช่องด้านบน (ถ้าเป็นกลุ่มจะขึ้นต้นด้วย -)</li>
               </ol>
             </div>
 
-            {lineNotify.enabled && (
-              <div className="flex items-center gap-2 rounded-lg bg-green-50 p-3 text-sm text-green-700">
+            {telegram.enabled && (
+              <div className="flex items-center gap-2 rounded-lg bg-blue-50 p-3 text-sm text-blue-700">
                 <CheckCircle2 className="h-4 w-4" />
-                <span>เปิดใช้งาน LINE Notify แล้ว - จะแจ้งเตือนเมื่อมีปัญหาใหม่</span>
+                <span>เปิดใช้งาน Telegram Bot แล้ว - จะแจ้งเตือนเมื่อมีปัญหาใหม่</span>
               </div>
             )}
           </div>

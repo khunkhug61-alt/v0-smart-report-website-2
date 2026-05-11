@@ -33,7 +33,7 @@ const iconMap: Record<string, React.ElementType> = {
 function ReportForm() {
   const searchParams = useSearchParams()
   const router = useRouter()
-  const { categories, addReport } = useReportStore()
+  const { categories, addReport, sendLineNotify } = useReportStore()
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const [formData, setFormData] = useState({
@@ -104,6 +104,16 @@ function ReportForm() {
       location: formData.location.trim(),
       imageUrl: imagePreview || undefined,
     })
+
+    // Send LINE notification
+    const lineMessage = `
+🔔 แจ้งปัญหาใหม่!
+📂 หมวดหมู่: ${formData.category}
+📍 สถานที่: ${formData.location.trim()}
+📝 รายละเอียด: ${formData.description.trim()}
+🕐 เวลา: ${new Date().toLocaleString('th-TH')}
+`
+    sendLineNotify(lineMessage)
 
     setSubmitResult({ success: true, editToken })
     setIsSubmitting(false)

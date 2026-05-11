@@ -22,6 +22,10 @@ import {
   Eye,
   EyeOff,
   AlertCircle,
+  Bell,
+  Settings,
+  Send,
+  ExternalLink,
 } from 'lucide-react'
 
 type FilterStatus = 'all' | ReportStatus
@@ -35,6 +39,9 @@ export default function AdminPage() {
     updateReportStatus,
     updateReport,
     deleteReport,
+    lineNotify,
+    updateLineNotifySettings,
+    sendLineNotify,
   } = useReportStore()
 
   const [loginForm, setLoginForm] = useState({ username: '', password: '' })
@@ -46,6 +53,9 @@ export default function AdminPage() {
   const [editForm, setEditForm] = useState({ description: '', location: '', status: 'pending' as ReportStatus })
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null)
   const [expandedImage, setExpandedImage] = useState<string | null>(null)
+  const [showLineSettings, setShowLineSettings] = useState(false)
+  const [lineToken, setLineToken] = useState(lineNotify.token)
+  const [lineTestStatus, setLineTestStatus] = useState<'idle' | 'sending' | 'success' | 'error'>('idle')
 
   const stats = {
     total: reports.length,
@@ -73,8 +83,25 @@ export default function AdminPage() {
     }
   }
 
-  const handleStatusChange = (reportId: string, newStatus: ReportStatus) => {
+  const handleStatusChange = async (reportId: string, newStatus: ReportStatus) => {
+    const report = reports.find(r => r.id === reportId)
     updateReportStatus(reportId, newStatus)
+    
+    if (report && lineNotify.enabled) {
+      const statusText = {
+        'pending': 'รอดำเนินการ',
+        'in-progress': 'กำลังแก้ไข',
+        'done': 'เสร็จแล้ว ✅'
+      }
+      const message = `
+📋 อัปเดตสถานะ
+📂 หมวดหมู่: ${report.category}
+📍 สถานที่: ${report.location}
+🔄 สถานะใหม่: ${statusText[newStatus]}
+🕐 เวลา: ${new Date().toLocaleString('th-TH')}
+`
+      sendLineNotify(message)
+    }
   }
 
   const handleEditReport = (report: Report) => {
@@ -115,6 +142,17 @@ export default function AdminPage() {
       hour: '2-digit',
       minute: '2-digit',
     })
+  }
+
+  const saveLineSettings = () => {
+    updateLineNotifySettings({ token: lineToken, enabled: lineToken.length > 0 })
+  }
+
+  const testLineNotify = async () => {
+    setLineTestStatus('sending')
+    const success = await sendLineNotify('🔔 ทดสอบการแจ้งเตือนจาก Smart Report สำเร็จ!')
+    setLineTestStatus(success ? 'success' : 'error')
+    setTimeout(() => setLineTestStatus('idle'), 3000)
   }
 
   // Login Screen
@@ -214,14 +252,113 @@ export default function AdminPage() {
           </div>
           <p className="text-muted-foreground">จัดการรายการแจ้งปัญหาทั้งหมด</p>
         </div>
-        <button
-          onClick={logoutAdmin}
-          className="inline-flex items-center justify-center gap-2 rounded-lg border border-border px-4 py-2 font-medium text-foreground transition-colors hover:bg-accent"
-        >
-          <LogOut className="h-5 w-5" />
-          ออกจากระบบ
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={() => setShowLineSettings(!showLineSettings)}
+            className={`inline-flex items-center justify-center gap-2 rounded-lg border px-4 py-2 font-medium transition-colors ${
+              lineNotify.enabled
+                ? 'border-green-500 bg-green-50 text-green-700 hover:bg-green-100'
+                : 'border-border text-foreground hover:bg-accent'
+            }`}
+          >
+            <Bell className="h-5 w-5" />
+            LINE Notify
+          </button>
+          <button
+            onClick={logoutAdmin}
+            className="inline-flex items-center justify-center gap-2 rounded-lg border border-border px-4 py-2 font-medium text-foreground transition-colors hover:bg-accent"
+          >
+            <LogOut className="h-5 w-5" />
+            ออกจากระบบ
+          </button>
+        </div>
       </div>
+
+      {/* LINE Notify Settings Panel */}
+      {showLineSettings && (
+        <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
+          <div className="mb-4 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Bell className="h-5 w-5 text-green-500" />
+              <h2 className="text-lg font-semibold text-foreground">ตั้งค่า LINE Notify</h2>
+            </div>
+            <a
+              href="https://notify-bot.line.me/th/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1 text-sm text-primary hover:underline"
+            >
+              รับ Token <ExternalLink className="h-3 w-3" />
+            </a>
+          </div>
+          
+          <div className="space-y-4">
+            <div>
+              <label className="mb-2 block text-sm font-medium text-foreground">
+                LINE Notify Token
+              </label>
+              <input
+                type="text"
+                value={lineToken}
+                onChange={(e) => setLineToken(e.target.value)}
+                placeholder="วาง Token ที่ได้จาก LINE Notify"
+                className="w-full rounded-lg border border-input bg-background px-4 py-3 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+              />
+            </div>
+
+            <div className="flex flex-wrap gap-3">
+              <button
+                onClick={saveLineSettings}
+                className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+              >
+                <Settings className="h-4 w-4" />
+                บันทึกการตั้งค่า
+              </button>
+              
+              {lineNotify.enabled && (
+                <button
+                  onClick={testLineNotify}
+                  disabled={lineTestStatus === 'sending'}
+                  className={`inline-flex items-center gap-2 rounded-lg border px-4 py-2 font-medium transition-colors ${
+                    lineTestStatus === 'success'
+                      ? 'border-green-500 bg-green-50 text-green-700'
+                      : lineTestStatus === 'error'
+                      ? 'border-red-500 bg-red-50 text-red-700'
+                      : 'border-border text-foreground hover:bg-accent'
+                  }`}
+                >
+                  <Send className="h-4 w-4" />
+                  {lineTestStatus === 'sending'
+                    ? 'กำลังส่ง...'
+                    : lineTestStatus === 'success'
+                    ? 'ส่งสำเร็จ!'
+                    : lineTestStatus === 'error'
+                    ? 'ส่งไม่สำเร็จ'
+                    : 'ทดสอบส่งข้อความ'}
+                </button>
+              )}
+            </div>
+
+            <div className="rounded-lg bg-muted p-4 text-sm">
+              <p className="mb-2 font-medium text-foreground">วิธีรับ LINE Notify Token:</p>
+              <ol className="list-inside list-decimal space-y-1 text-muted-foreground">
+                <li>ไปที่ <a href="https://notify-bot.line.me/th/" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">notify-bot.line.me</a></li>
+                <li>เข้าสู่ระบบด้วยบัญชี LINE</li>
+                <li>ไปที่ {"\"หน้าของฉัน\""} {">"} {"\"สร้าง Token\""}</li>
+                <li>เลือกกลุ่มหรือ {"\"1-on-1 chat\""} สำหรับรับแจ้งเตือน</li>
+                <li>คัดลอก Token มาวางในช่องด้านบน</li>
+              </ol>
+            </div>
+
+            {lineNotify.enabled && (
+              <div className="flex items-center gap-2 rounded-lg bg-green-50 p-3 text-sm text-green-700">
+                <CheckCircle2 className="h-4 w-4" />
+                <span>เปิดใช้งาน LINE Notify แล้ว - จะแจ้งเตือนเมื่อมีปัญหาใหม่</span>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Stats Cards */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">

@@ -28,11 +28,17 @@ export interface Admin {
   password: string
 }
 
+export interface LineNotifySettings {
+  token: string
+  enabled: boolean
+}
+
 interface ReportStore {
   reports: Report[]
   categories: Category[]
   admin: Admin
   isAdminLoggedIn: boolean
+  lineNotify: LineNotifySettings
   
   // Report actions
   addReport: (report: Omit<Report, 'id' | 'status' | 'createdAt' | 'updatedAt' | 'editToken'>) => string
@@ -45,6 +51,10 @@ interface ReportStore {
   // Admin actions
   loginAdmin: (username: string, password: string) => boolean
   logoutAdmin: () => void
+  
+  // LINE Notify actions
+  updateLineNotifySettings: (settings: Partial<LineNotifySettings>) => void
+  sendLineNotify: (message: string) => Promise<boolean>
 }
 
 const defaultCategories: Category[] = [
@@ -67,6 +77,7 @@ export const useReportStore = create<ReportStore>()(
       categories: defaultCategories,
       admin: { username: 'admin', password: 'admin123' },
       isAdminLoggedIn: false,
+      lineNotify: { token: '', enabled: false },
 
       addReport: (reportData) => {
         const editToken = generateEditToken()
@@ -129,6 +140,32 @@ export const useReportStore = create<ReportStore>()(
 
       logoutAdmin: () => {
         set({ isAdminLoggedIn: false })
+      },
+
+      updateLineNotifySettings: (settings) => {
+        set((state) => ({
+          lineNotify: { ...state.lineNotify, ...settings },
+        }))
+      },
+
+      sendLineNotify: async (message) => {
+        const { lineNotify } = get()
+        if (!lineNotify.enabled || !lineNotify.token) {
+          return false
+        }
+
+        try {
+          const response = await fetch('/api/line-notify', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ message, token: lineNotify.token }),
+          })
+          const data = await response.json()
+          return data.success
+        } catch (error) {
+          console.error('Failed to send LINE notification:', error)
+          return false
+        }
       },
     }),
     {

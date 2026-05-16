@@ -1,35 +1,27 @@
-# v0-smart-report-website-2
+# Deploy Next.js to GitHub Pages
 
-This is a [Next.js](https://nextjs.org) project bootstrapped with [v0](https://v0.app).
+This is a Next.js template which can be deployed to GitHub Pages as a static site.
 
-## Built with v0
+## Deploying to GitHub Pages
 
-This repository is linked to a [v0](https://v0.app) project. You can continue developing by visiting the link below -- start new chats to make changes, and v0 will push commits directly to this repo. Every merge to `main` will automatically deploy.
+1.  Create a new public GitHub repository
+2.  Push the starter code to the `main` branch
+3.  On GitHub, go to **Settings** > **Pages** > **Source**, and choose **GitHub Actions** as the source
+4.  Make a commit and push it to see the changes on GitHub Pages
 
-[Continue working on v0 →](https://v0.app/chat/projects/prj_JHi9PCwJdcCR9RXrsBSxD5ADVV8P)
-
-## Getting Started
-
-First, run the development server:
+Congratulations! You should have a URL like:
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
+https://<github-user-name>.github.io/<github-project-name>/
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
-
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+For more information, see our [deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying/static-exports).
 
 ## Learn More
 
-To learn more, take a look at the following resources:
+To learn more about Next.js, take a look at the following resources:
 
 - [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
 - [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-- [v0 Documentation](https://v0.app/docs) - learn about v0 and how to use it.
 
-<a href="https://v0.app/chat/api/kiro/clone/khunkhug61-alt/v0-smart-report-website-2" alt="Open in Kiro"><img src="https://pdgvvgmkdvyeydso.public.blob.vercel-storage.com/open%20in%20kiro.svg?sanitize=true" /></a>
+You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
